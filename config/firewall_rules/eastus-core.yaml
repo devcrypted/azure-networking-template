@@ -1,0 +1,14 @@
+policy_name: "policy-eastus"
+rule_collection_groups:
+  "yaml-defined-core-rules":
+    priority: 2000
+    network_rule_collections:
+      "allow-on-prem":
+        priority: 100
+        action: "Allow"
+        rules:
+          "corp-net":
+            protocols: ["Any"]
+            destination_ports: ["*"]
+            source_addresses: ["192.168.0.0/16"]
+            destination_addresses: ["*"]
