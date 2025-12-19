@@ -32,13 +32,13 @@ jobs:
           terraform_version: 1.5.0
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: make fmt
 
       - name: Terraform Init
-        run: terraform init
+        run: make init
 
       - name: Terraform Validate
-        run: terraform validate
+        run: make validate
 
       - name: Install TFLint
         run: |
@@ -57,7 +57,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color
+        run: make plan
         continue-on-error: true
 
       - name: Update PR Status

@@ -1,9 +1,5 @@
-# 1. Resource Group for vWAN
-resource "azurerm_resource_group" "vwan_rg" {
-  name     = module.naming.resource_group.name_unique
-  location = var.vwan_config.location
-  tags     = var.default_tags
-}
+# 1. Resource Group is now managed by the module to avoid data source errors
+# resource "azurerm_resource_group" "vwan_rg" removed
 
 locals {
   # 1. Read all YAML files from config/firewall_rules
@@ -31,12 +27,13 @@ module "firewall_policies" {
   # Use generated name for consistency
   name = "afwp-${module.naming.firewall_policy.slug}-${each.key}"
 
-  resource_group_name = coalesce(each.value.resource_group_name, "rg-${var.pname}-${var.environment}")
+
+  # Use module.naming for RG if not provided, but referencing var.pname etc directly is safer for now
+  resource_group_name = coalesce(each.value.resource_group_name, "rg-${var.pname}-${var.environment}-${each.value.location}")
   location            = each.value.location
   sku                 = each.value.sku
   base_policy_id      = each.value.base_policy_id
 
-  # Merge explicit TF rules with YAML rules
   rule_collection_groups = merge(
     each.value.rule_collection_groups,
     lookup(local.fw_rules_by_policy, each.key, {})
@@ -48,7 +45,8 @@ module "virtual_wan" {
   source  = "Azure/avm-ptn-virtualwan/azurerm"
   version = "0.5.0"
 
-  resource_group_name            = azurerm_resource_group.vwan_rg.name
+  create_resource_group          = true
+  resource_group_name            = module.naming.resource_group.name_unique
   location                       = var.vwan_config.location
   virtual_wan_name               = module.naming.virtual_wan.name_unique
   virtual_wan_tags               = var.default_tags
@@ -87,7 +85,7 @@ module "private_dns_zones" {
 
   for_each = var.dns_zones
 
-  resource_group_name = azurerm_resource_group.vwan_rg.name # Centrally located
+  resource_group_name = module.virtual_wan.resource_group_name # Managed by vWAN module
   domain_name         = each.key
   tags                = var.default_tags
 
@@ -115,7 +113,7 @@ module "spokes" {
   resource_group_name = azurerm_resource_group.spoke_rgs[each.key].name
   location            = each.value.location
   address_space       = each.value.address_space
-  tags                = var.default_tags
+  tags                = merge(var.default_tags, each.value.tags)
 
   subnets = each.value.subnets
 

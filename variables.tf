@@ -67,6 +67,7 @@ variable "spokes" {
     location            = string
     address_space       = list(string)
     connected_hub_key   = string # Must match key in vwan_config.hubs
+    tags                = optional(map(string), {})
 
     # Subnets Configuration
     subnets = map(object({
