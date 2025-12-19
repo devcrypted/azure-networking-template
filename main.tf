@@ -18,6 +18,16 @@ locals {
   }
 }
 
+# 1b. Create Resource Groups for Firewall Policies
+# Since Policies might be regional, we need RGs for them.
+resource "azurerm_resource_group" "fw_policy_rgs" {
+  for_each = var.firewall_policies
+
+  name     = coalesce(each.value.resource_group_name, "rg-${var.pname}-${var.environment}-${each.value.location}")
+  location = each.value.location
+  tags     = var.default_tags
+}
+
 # 2. Deploy Firewall Policies (AVM Pattern)
 module "firewall_policies" {
   source = "./modules/firewall_policy"
@@ -28,8 +38,8 @@ module "firewall_policies" {
   name = "afwp-${module.naming.firewall_policy.slug}-${each.key}"
 
 
-  # Use module.naming for RG if not provided, but referencing var.pname etc directly is safer for now
-  resource_group_name = coalesce(each.value.resource_group_name, "rg-${var.pname}-${var.environment}-${each.value.location}")
+  # Use generated RG from above
+  resource_group_name = azurerm_resource_group.fw_policy_rgs[each.key].name
   location            = each.value.location
   sku                 = each.value.sku
   base_policy_id      = each.value.base_policy_id
